@@ -1,0 +1,5 @@
+{
+  "name": "Moulinette Sim",
+  "description": "A queuing theory simulator for an auto-grading infrastructure ('Moulinette'), analyzing Waterfall and Channel/Dam scenarios with configurable parameters.",
+  "requestFramePermissions": []
+}
