@@ -123,16 +123,31 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
            <h3 className="text-lg font-semibold text-slate-700 mb-4">Cycle du Barrage (Régulation ING)</h3>
            <div className="h-48">
              <ResponsiveContainer width="100%" height="100%">
-               <AreaChart data={chartData.slice(0, 100)}> {/* Zoom on first 100 ticks to show cycle */}
+               {/* CORRECTION ICI : On transforme les données à la volée */}
+               <AreaChart 
+                 data={chartData.slice(0, 100).map(t => ({
+                   ...t, 
+                   damValue: t.damOpen ? 1 : 0  // Conversion force en nombre (1 ou 0)
+                 }))}
+               > 
                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                  <XAxis dataKey="time" label={{ value: 'Temps (Ticks)', position: 'insideBottomRight', offset: -5 }} />
-                 <YAxis label={{ value: 'Ouvert (1) / Fermé (0)', angle: -90, position: 'insideLeft' }} domain={[0, 1.2]} ticks={[0, 1]} />
-                 <Tooltip />
-                 <Area type="step" dataKey="damOpen" name="Barrage Ouvert ?" stroke="#f59e0b" fill="#fef3c7" />
+                 {/* Ajustement du domaine Y pour que le graph soit joli (de 0 à 1 avec un peu de marge) */}
+                 <YAxis hide domain={[0, 1.1]} /> 
+                 <Tooltip formatter={(value) => value === 1 ? 'Ouvert' : 'Fermé'} />
+                 
+                 {/* On utilise la nouvelle clé 'damValue' */}
+                 <Area 
+                    type="step" 
+                    dataKey="damValue" 
+                    name="État Barrage" 
+                    stroke="#f59e0b" 
+                    fill="#fef3c7" 
+                    strokeWidth={2}
+                 />
                </AreaChart>
              </ResponsiveContainer>
            </div>
-           <p className="text-xs text-slate-500 mt-2 text-center">Zoom sur les 100 premiers ticks pour visualiser le cycle d'ouverture/fermeture du barrage.</p>
         </div>
       )}
     </div>

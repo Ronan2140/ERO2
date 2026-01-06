@@ -258,10 +258,6 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
            <Play size={20} fill="currentColor" />
            {isRunning ? 'Calcul...' : 'Lancer Simulation'}
          </button>
-         <div className="flex items-start gap-2 mt-4 p-2 bg-blue-50 text-blue-800 text-xs rounded border border-blue-100">
-           <Info size={16} className="shrink-0 mt-0.5" />
-           <p>Modifiez les paramètres et relancez pour voir l'impact sur les files d'attente et les rejets.</p>
-         </div>
       </div>
     </div>
   );

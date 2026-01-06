@@ -14,10 +14,10 @@ const DEFAULT_CONFIG: SimulationConfig = {
   resultQueueCapacity: 20,
   resultServerSpeed: 1,
   enableBackup: false,
-  arrivalRateIng: 0.2, // 20% chance per tick
-  serviceDurationIng: 15, // 15 ticks to process
-  arrivalRatePrepa: 0.05, // 5% chance
-  serviceDurationPrepa: 40, // 40 ticks
+  arrivalRateIng: 0.2, // % chance per tick
+  serviceDurationIng: 15, // ticks to process
+  arrivalRatePrepa: 0.05, // % chance
+  serviceDurationPrepa: 40, // ticks
   damBlockDuration: 50 // blocks for 50, open for 25
 };
 
