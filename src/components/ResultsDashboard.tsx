@@ -24,7 +24,7 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
 
   // 1. Sélection des données selon la vue
   const stats = viewMode === 'GLOBAL' ? results.stats : (viewMode === 'ING' ? results.stats.ing : results.stats.prepa);
-  
+
   // 2. Calcul des taux pour l'affichage (xx.x %)
   // Note: Dans ton engine, dropRateExec est un ratio (0 à 1), donc on multiplie par 100
   const rateExec = stats.dropRateExec * 100;
@@ -32,39 +32,39 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
   const totalDrop = rateExec + rateResult;
 
   // Données pour le graphique (timeline toujours globale car physique)
-  const chartData = results.timeline.length > 200 
-    ? results.timeline.filter((_, i) => i % Math.ceil(results.timeline.length / 200) === 0) 
+  const chartData = results.timeline.length > 200
+    ? results.timeline.filter((_, i) => i % Math.ceil(results.timeline.length / 200) === 0)
     : results.timeline;
 
   return (
     <div className="flex-1 p-8 overflow-y-auto h-full bg-slate-50 font-sans">
-      
+
       {/* EN-TÊTE & SÉLECTEUR */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight">Analyse de Performance</h1>
           <p className="text-slate-500 text-sm">Vue : <span className="font-bold text-blue-600">{viewMode}</span></p>
         </div>
-        
+
         <div className="flex bg-slate-200 p-1.5 rounded-xl gap-1 shadow-inner">
-          <button 
-            onClick={() => setViewMode('GLOBAL')} 
+          <button
+            onClick={() => setViewMode('GLOBAL')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'GLOBAL' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            <Activity size={14}/> GLOBAL
+            <Activity size={14} /> GLOBAL
           </button>
-          <button 
-            onClick={() => setViewMode('ING')} 
+          <button
+            onClick={() => setViewMode('ING')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'ING' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            <HardHat size={14}/> ING
+            <HardHat size={14} /> ING
           </button>
           {scenario === ScenarioType.CHANNELS_DAMS && (
-            <button 
-              onClick={() => setViewMode('PREPA')} 
+            <button
+              onClick={() => setViewMode('PREPA')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'PREPA' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              <GraduationCap size={14}/> PREPA
+              <GraduationCap size={14} /> PREPA
             </button>
           )}
         </div>
@@ -72,15 +72,16 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
 
       {/* GRILLE KPI */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        
+
         {/* KPI 1 : TEMPS DE SÉJOUR */}
-        <KpiCard 
-          title="Temps de Séjour Moyen" 
-          value={`${stats.avgSystemTime.toFixed(1)} t`} 
-          icon={<Clock size={20}/>} 
-          sub="Attente + Service" 
+        <KpiCard
+          title="Temps de Séjour Moyen"
+          value={`${stats.avgSystemTime.toFixed(1)} t`}
+          icon={<Clock size={20} />}
+          sub={`Dont ${stats.avgWaitTime.toFixed(1)} t d'attente`}
+          sub2={`Écart-type : ${results.stats.sigma.toFixed(1)} t`}
         />
-        
+
         {/* KPI 2 : CARTE DE REJET DÉTAILLÉE (Celle que tu veux) */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
           {/* Total en gros */}
@@ -92,16 +93,16 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
               </h3>
             </div>
             <div className={`p-3 rounded-xl ${totalDrop > 5 ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-              <AlertTriangle size={24}/>
+              <AlertTriangle size={24} />
             </div>
           </div>
-          
+
           {/* Détails avec barres */}
           <div className="space-y-3 pt-4 border-t border-slate-50 mt-auto">
             {/* Barre Exec */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[10px] font-bold">
-                <span className="flex items-center gap-1 text-slate-500"><ShieldAlert size={12}/> FILE 1 (EXEC)</span>
+                <span className="flex items-center gap-1 text-slate-500"><ShieldAlert size={12} /> FILE 1 (EXEC)</span>
                 <span className="text-slate-700">{rateExec.toFixed(1)}%</span>
               </div>
               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
@@ -111,7 +112,7 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
             {/* Barre Result */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[10px] font-bold">
-                <span className="flex items-center gap-1 text-red-500"><Trash2 size={12}/> FILE 2 (RESULT)</span>
+                <span className="flex items-center gap-1 text-red-500"><Trash2 size={12} /> FILE 2 (RESULT)</span>
                 <span className="text-red-600">{rateResult.toFixed(1)}%</span>
               </div>
               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
@@ -123,19 +124,19 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
 
         {/* KPI 3 : UTILISATION OU VOLUME */}
         {viewMode === 'GLOBAL' ? (
-          <KpiCard 
-            title="Utilisation Serveurs" 
-            value={`${(results.stats.serverUtilization * 100).toFixed(1)}%`} 
-            icon={<Activity size={20}/>} 
-            sub="Charge moyenne des processeurs" 
+          <KpiCard
+            title="Utilisation Serveurs"
+            value={`${(results.stats.serverUtilization * 100).toFixed(1)}%`}
+            icon={<Activity size={20} />}
+            sub="Charge moyenne des processeurs"
           />
         ) : (
-          <KpiCard 
-            title="Volume Population" 
+          <KpiCard
+            title="Volume Population"
             // @ts-ignore (count existe sur PopulationStats)
-            value={`${stats.count}`} 
-            icon={viewMode === 'ING' ? <HardHat size={20}/> : <GraduationCap size={20}/>} 
-            sub="Nombre d'agents générés" 
+            value={`${stats.count}`}
+            icon={viewMode === 'ING' ? <HardHat size={20} /> : <GraduationCap size={20} />}
+            sub="Nombre d'agents générés"
           />
         )}
       </div>
@@ -143,7 +144,7 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
       {/* GRAPHIQUE */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-80">
         <h3 className="text-sm font-bold text-slate-700 mb-6 flex items-center gap-2">
-            <Activity size={16} className="text-blue-500" /> Occupation des Files (Temps Réel)
+          <Activity size={16} className="text-blue-500" /> Occupation des Files (Temps Réel)
         </h3>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
@@ -162,7 +163,7 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
 };
 
 // Composant Simple pour les KPI standards
-const KpiCard = ({ title, value, icon, sub }: any) => (
+const KpiCard = ({ title, value, icon, sub, sub2 }: any) => (
   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
     <div className="flex justify-between items-start mb-4">
       <div>
@@ -172,5 +173,6 @@ const KpiCard = ({ title, value, icon, sub }: any) => (
       <div className="p-3 bg-slate-50 rounded-xl text-slate-400 border border-slate-100">{icon}</div>
     </div>
     <p className="text-[11px] text-slate-400 font-medium mt-auto">{sub}</p>
+    {sub2 && <p className="text-[11px] text-slate-400 font-medium mt-1">{sub2}</p>}
   </div>
 );

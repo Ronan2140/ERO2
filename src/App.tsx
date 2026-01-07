@@ -3,7 +3,7 @@ import { ControlPanel } from './components/ControlPanel';
 import { LiveVisualization } from './components/LiveVisualization';
 import { ResultsDashboard } from './components/ResultsDashboard';
 import { runSimulation } from './simulationEngine';
-import { ScenarioType, SimulationConfig, SimulationResult } from './types';
+import { ScenarioType, SimulationConfig, SimulationResult, simulationHistoryType } from './types';
 import { Activity } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -15,10 +15,10 @@ const DEFAULT_CONFIG: SimulationConfig = {
   resultQueueCapacity: 20,
   resultServerSpeed: 1,
   enableBackup: false,
-  arrivalRateIng: 0.2, // % chance per tick
-  serviceDurationIng: 15, // ticks to process
-  arrivalRatePrepa: 0.05, // % chance
-  serviceDurationPrepa: 40, // ticks
+  arrivalRateIng: 0.2,
+  serviceDurationIng: 15,
+  arrivalRatePrepa: 0.05,
+  serviceDurationPrepa: 40,
   damBlockDuration: 50,
   damOpenDuration: 25
 };
@@ -28,57 +28,77 @@ const App: React.FC = () => {
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [activeTab, setActiveTab] = useState<'LIVE' | 'RESULTS'>('RESULTS');
   const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationHistory, setSimulationHistory] = useState({});
+
+  // Structure : Record<CléConfigString, { config: ObjetConfig, results: ListeStats }>
+  const [simulationHistory, setSimulationHistory] = useState<Record<string, simulationHistoryType>>({});
 
   const handleRunSimulation = (numIterations: any = 1) => {
     const iterations = typeof numIterations === 'number' ? numIterations : 1;
     setIsSimulating(true);
-  
+
     setTimeout(() => {
-      const configKey = config.scenario == ScenarioType.WATERFALL ? `W_K${config.executionServerCount}_Q1${config.executionQueueCapacity}_Q2${config.resultQueueCapacity}_l${config.arrivalRateIng * 100}_d${config.serviceDurationIng}_${config.duration/1000}t` : 
-                        `C_K${config.executionServerCount}_Q1${config.executionQueueCapacity}_Q2${config.resultQueueCapacity}_l${config.arrivalRateIng * 100}_${config.arrivalRatePrepa * 100}_d${config.serviceDurationIng}_${config.serviceDurationPrepa}_${config.duration/1000}t`;
-      
-      let summaryStats: any[] = [];
+      // Clé unique basée sur l'objet config complet
+      const configKey = JSON.stringify(config);
+
+      let currentIterationStats: any[] = [];
       let lastResult: SimulationResult | null = null;
-  
+
+      // Accumulateurs pour le calcul des moyennes sur N itérations
+      let accStats = {
+        avgWaitTime: 0,
+        avgSystemTime: 0,
+        serverUtilization: 0,
+        dropRateTotal: 0
+      };
+
       for (let i = 0; i < iterations; i++) {
         const results = runSimulation(config);
         lastResult = results;
-        
-        const stats = results.stats;
-        
-        summaryStats.push({
+        const s = results.stats;
+
+        accStats.avgWaitTime += s.avgWaitTime;
+        accStats.avgSystemTime += s.avgSystemTime;
+        accStats.serverUtilization += s.serverUtilization;
+        accStats.dropRateTotal += (s.dropRateExec + s.dropRateResult);
+
+        currentIterationStats.push({
           Date: new Date().toLocaleString(),
-          Scenario: config.scenario,
-          Serveurs: config.executionServerCount,
-          Cap_Q1: config.executionQueueCapacity,
-          Cap_Q2: config.resultQueueCapacity,
-          Flux_ING: config.arrivalRateIng,
-          Flux_Prepa: config.arrivalRatePrepa,
-          
-          // GLOBAL
-          Total_Agents: stats.totalAgents,
-          Taux_Rejet_Global: ((stats.dropRateExec + stats.dropRateResult) * 100).toFixed(2) + "%",
-          Temps_Sejour_Moyen: stats.avgSystemTime.toFixed(2),
-          Utilisation_Serveurs: (stats.serverUtilization * 100).toFixed(2) + "%",
-          
-          // ING SPECIFIC
-          ING_Wait: stats.ing.avgWaitTime.toFixed(2),
-          ING_Drop: (stats.ing.dropRate * 100).toFixed(2) + "%",
-          
-          // PREPA SPECIFIC
-          PREPA_Wait: stats.prepa.avgWaitTime.toFixed(2),
-          PREPA_Drop: (stats.prepa.dropRate * 100).toFixed(2) + "%",
+          Iteration: i + 1,
+          Total_Agents: s.totalAgents,
+          Taux_Rejet_Global: ((s.dropRateExec + s.dropRateResult) * 100).toFixed(2) + "%",
+          Temps_Sejour_Moyen: s.avgSystemTime.toFixed(2),
+          Utilisation_Serveurs: (s.serverUtilization * 100).toFixed(2) + "%",
+          ING_Wait: s.ing.avgWaitTime.toFixed(2),
+          PREPA_Wait: s.prepa.avgWaitTime.toFixed(2),
+          Sigma: s.sigma.toFixed(2)
         });
       }
-  
-      setSimulationResult(lastResult);
-      
-      setSimulationHistory((prev: any) => ({
-        ...prev,
-        [configKey]: [...(prev[configKey] || []), ...summaryStats]
-      }));
-  
+
+      // Mise à jour de l'affichage Dashboard avec les moyennes
+      if (lastResult) {
+        setSimulationResult({
+          ...lastResult,
+          stats: {
+            ...lastResult.stats,
+            avgWaitTime: accStats.avgWaitTime / iterations,
+            avgSystemTime: accStats.avgSystemTime / iterations,
+            serverUtilization: accStats.serverUtilization / iterations,
+          }
+        });
+      }
+
+      // Enregistrement dans l'historique Record Config -> Results
+      setSimulationHistory((prev) => {
+        const existingEntry = prev[configKey] || { config: { ...config }, results: [] };
+        return {
+          ...prev,
+          [configKey]: {
+            ...existingEntry,
+            results: [...existingEntry.results, ...currentIterationStats]
+          }
+        };
+      });
+
       setIsSimulating(false);
       setActiveTab('RESULTS');
     }, 100);
@@ -86,45 +106,78 @@ const App: React.FC = () => {
 
   const exportHistoryToExcel = () => {
     const wb = XLSX.utils.book_new();
-    const summaryRows = [];
+    const summaryRows: any[] = [];
+    if (Object.keys(simulationHistory).length === 0) {
+      alert("Aucune donnée d'historique à exporter.");
+      return;
+    }
+    Object.entries(simulationHistory).forEach(([configKey, historyEntry], index) => {
+      const { config: entryConfig, results } = historyEntry;
+      if (results.length === 0) return;
 
-    Object.keys(simulationHistory).forEach(key => {
-      const data = simulationHistory[key];
-      
-      if (data.length > 0) {
-        const avgSejour = data.reduce((acc, d) => acc + parseFloat(d.Temps_Sejour_Moyen), 0) / data.length;
-        const avgRejet = data.reduce((acc, d) => acc + parseFloat(d.Taux_Rejet_Global), 0) / data.length;
-        const avgIngWait = data.reduce((acc, d) => acc + parseFloat(d.ING_Wait), 0) / data.length;
-        const avgPrepaWait = data.reduce((acc, d) => acc + parseFloat(d.PREPA_Wait), 0) / data.length;
+      // 1. Création du bloc de paramètres (Clé / Valeur)
+      const configParams = [
+        ["PARAMÈTRES DE LA CONFIGURATION", ""],
+        ["ID Interne", `Config_${index + 1}`],
+        ["Scénario", entryConfig.scenario],
+        ["Ticks Simulation", entryConfig.duration],
+        ["Serveurs d'exécution (K)", entryConfig.executionServerCount],
+        ["Capacité File Entrée (ks)", entryConfig.executionQueueCapacity],
+        ["Capacité File Sortie (kf)", entryConfig.resultQueueCapacity],
+        ["Vitesse Serveur Sortie", entryConfig.resultServerSpeed],
+        ["Backup Système", entryConfig.enableBackup ? "Activé" : "Désactivé"],
+        ["Taux Arrivée ING (λ)", entryConfig.arrivalRateIng],
+        ["Durée Service ING (d)", entryConfig.serviceDurationIng],
+      ];
 
-        summaryRows.push({
-          Configuration: key,
-          Nb_Simulations: data.length,
-          MOY_Temps_Sejour: avgSejour.toFixed(2),
-          MOY_Taux_Rejet: avgRejet.toFixed(2) + "%",
-          MOY_Attente_ING: avgIngWait.toFixed(2),
-          MOY_Attente_PREPA: avgPrepaWait.toFixed(2)
-        });
+      if (entryConfig.scenario === ScenarioType.CHANNELS_DAMS) {
+        configParams.push(
+          ["Taux Arrivée PREPA (λ)", entryConfig.arrivalRatePrepa],
+          ["Durée Service PREPA (d)", entryConfig.serviceDurationPrepa],
+          ["Cycle Barrage (Fermé/Ouvert)", `${entryConfig.damBlockDuration}/${entryConfig.damOpenDuration}`]
+        );
       }
 
-      const ws = XLSX.utils.json_to_sheet(data);
-      const sheetName = key.substring(0, 31);
+      configParams.push(["", ""], ["RÉSULTATS DES SIMULATIONS (BENCHMARK)", ""]);
+
+      // 2. Génération de la feuille Excel
+      const ws = XLSX.utils.aoa_to_sheet(configParams);
+      // Ajout des données JSON sous le bloc paramètres (ligne 15 environ)
+      XLSX.utils.sheet_add_json(ws, results, { origin: configParams.length - 1 });
+
+      // 3. Calcul des métriques pour l'onglet de résumé
+      const avgSejour = results.reduce((acc, r) => acc + parseFloat(r.Temps_Sejour_Moyen), 0) / results.length;
+      const avgRejet = results.reduce((acc, r) => acc + parseFloat(r.Taux_Rejet_Global), 0) / results.length;
+
+      summaryRows.push({
+        Configuration: `Config ${index + 1}`,
+        TotalAgent: results.reduce((acc, r) => acc + parseInt(r.Total_Agents), 0) / results.length,
+        Scenario: entryConfig.scenario,
+        Tests_Effectues: results.length,
+        Moy_Sejour: avgSejour.toFixed(2),
+        Moy_Rejet: avgRejet.toFixed(2) + "%",
+        K: entryConfig.executionServerCount,
+        Lambda_ING: entryConfig.arrivalRateIng
+      });
+
+      // Nom d'onglet : Config_1_WATER...
+      const sheetName = `C${index + 1}_${entryConfig.scenario.substring(0, 10)}`.replace(/[\\\/\?\*\[\]]/g, "_");
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     });
 
+    // Ajout de l'onglet de synthèse
     const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
-    XLSX.utils.book_append_sheet(wb, wsSummary, "RESUME_STATISTIQUE");
+    XLSX.utils.book_append_sheet(wb, wsSummary, "SYNTHESE_GLOBALE");
 
-    XLSX.writeFile(wb, `ERO2_Benchmark_Consolide_${new Date().toLocaleDateString()}.xlsx`);
+    XLSX.writeFile(wb, `ERO2_Benchmark_Final_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   return (
     <div className="flex h-screen w-screen bg-slate-100 overflow-hidden font-sans text-slate-900">
-      
-      <ControlPanel 
-        config={config} 
-        setConfig={setConfig} 
-        onRun={handleRunSimulation} 
+      <ControlPanel
+        config={config}
+        setConfig={setConfig}
+        onRun={handleRunSimulation}
         onSave={exportHistoryToExcel}
         isRunning={isSimulating}
       />
@@ -135,32 +188,33 @@ const App: React.FC = () => {
             <div className="bg-blue-600 text-white p-1.5 rounded-lg">
               <Activity size={20} />
             </div>
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">Moulinette Simulator <span className="text-slate-400 font-normal">v2.0</span></h1>
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight">
+              Moulinette Simulator <span className="text-slate-400 font-normal">v2.1</span>
+            </h1>
           </div>
-          
+
           <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
-          <button 
-               onClick={() => setActiveTab('RESULTS')}
-               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'RESULTS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Résultats & Data
-             </button>
-             <button 
-               onClick={() => setActiveTab('LIVE')}
-               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'LIVE' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               Visualisation
-             </button>
-             
+            <button
+              onClick={() => setActiveTab('RESULTS')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'RESULTS' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Résultats & Data
+            </button>
+            <button
+              onClick={() => setActiveTab('LIVE')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'LIVE' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Visualisation
+            </button>
           </div>
         </header>
 
         <main className="flex-1 overflow-hidden relative">
-           {activeTab === 'LIVE' ? (
-             <LiveVisualization results={simulationResult} config={config} />
-           ) : (
-             <ResultsDashboard results={simulationResult} scenario={config.scenario} />
-           )}
+          {activeTab === 'LIVE' ? (
+            <LiveVisualization results={simulationResult} config={config} />
+          ) : (
+            <ResultsDashboard results={simulationResult} scenario={config.scenario} />
+          )}
         </main>
       </div>
     </div>

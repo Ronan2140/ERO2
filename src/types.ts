@@ -56,6 +56,7 @@ export interface SimulationStats {
   completed: number;
   avgWaitTime: number;
   avgSystemTime: number;
+  sigma: number;
   serverUtilization: number;
   dropRateExec: number;
   dropRateResult: number;
@@ -67,6 +68,11 @@ export interface SimulationResult {
   agents: Agent[];
   timeline: TimeStepData[];
   stats: SimulationStats;
+}
+
+export interface simulationHistoryType {
+  config: SimulationConfig;
+  results: any[];
 }
 
 export interface SimulationConfig {

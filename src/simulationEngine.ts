@@ -179,7 +179,6 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       completed: completed.length,
       avgWaitTime: completed.length ? totalWait / completed.length : 0,
       avgSystemTime: completed.length ? totalSys / completed.length : 0,
-      dropRate: total ? (droppedE + droppedR) / total : 0,
       dropRateExec: total ? droppedE / total : 0,
       dropRateResult: total ? droppedR / total : 0,
     };
@@ -192,6 +191,31 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
   const globalSys = globalProcessed.reduce((acc, a) => acc + getSystem(a), 0);
   const totalActiveTicks = timeline.reduce((acc, t) => acc + t.activeServers, 0);
 
+
+  const stayTimes = agents
+    .filter(a => a.status === 'COMPLETED' || a.status === 'BACKUP_SAVED')
+    .map(a => getSystem(a));
+
+  const N = stayTimes.length;
+  var sigma = 0;
+  if (N > 1) {
+      // 2. Calculer la moyenne (déjà présente dans ton code)
+      const avg = stayTimes.reduce((a, b) => a + b, 0) / N;
+
+      // 3. Calculer la variance
+      const variance = stayTimes.reduce((acc, t) => acc + Math.pow(t - avg, 2), 0) / (N - 1);
+
+      // 4. L'écart-type
+      sigma = Math.sqrt(variance);
+      
+  }
+  else
+    {
+    sigma = 0;
+  }
+
+  console.log(`Écart-type : ${sigma} ticks`);
+
   return {
     agents,
     timeline,
@@ -202,6 +226,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       completed: completedCount,
       avgWaitTime: globalProcessed.length ? globalWait / globalProcessed.length : 0,
       avgSystemTime: globalProcessed.length ? globalSys / globalProcessed.length : 0,
+      sigma: sigma,
       serverUtilization: totalActiveTicks / (config.duration * config.executionServerCount),
       dropRateExec: agents.length ? droppedExecCount / agents.length : 0,
       dropRateResult: agents.length ? droppedResultCount / agents.length : 0,
