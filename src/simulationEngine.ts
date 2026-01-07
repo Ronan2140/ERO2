@@ -1,7 +1,13 @@
+import {
+  Agent,
+  AgentType,
+  ScenarioType,
+  SimulationConfig,
+  SimulationResult,
+  TimeStepData,
+  PopulationStats,
+} from './types';
 
-import { Agent, AgentType, ScenarioType, SimulationConfig, SimulationResult, TimeStepData } from './types';
-
-// Helper to generate Poisson arrivals (simplified as Bernoulli process per tick for discrete sim)
 const shouldArrive = (rate: number): boolean => {
   return Math.random() < rate;
 };
@@ -9,78 +15,51 @@ const shouldArrive = (rate: number): boolean => {
 export const runSimulation = (config: SimulationConfig): SimulationResult => {
   const agents: Agent[] = [];
   const timeline: TimeStepData[] = [];
-  
-  // State
-  let q1: Agent[] = []; // Execution Queue
-  let q2: Agent[] = []; // Result Queue
-  
-  // Servers state: stores agent ID or null
-  // We track when a server will be free. serverFreeTick[i] = tick when server i is free.
+
+  let q1: Agent[] = [];
+  let q2: Agent[] = [];
+
   const executionServersFreeAt: number[] = new Array(config.executionServerCount).fill(0);
   let resultServerFreeAt = 0;
 
-  // Counters
   let nextAgentId = 1;
   let droppedExecCount = 0;
   let droppedResultCount = 0;
   let completedCount = 0;
-
-  // Dam State
-  let damCycleTimer = 0;
   let isDamOpen = true;
 
   for (let tick = 0; tick < config.duration; tick++) {
-    // 1. Update Dam State (Channels Scenario)
+    // 1. Barrage Cycle
     let damStatus = true;
     if (config.scenario === ScenarioType.CHANNELS_DAMS && config.damBlockDuration > 0) {
-      // Cycle: Block for tb, Open for tb/2
-      const fullCycle = config.damBlockDuration * 1.5;
+      const openTime = config.damOpenDuration ?? config.damBlockDuration;
+      const fullCycle = config.damBlockDuration + openTime;
       const phase = tick % fullCycle;
-      
+
       if (phase < config.damBlockDuration) {
-        isDamOpen = false; // Blocked
+        isDamOpen = false;
       } else {
-        isDamOpen = true; // Open
+        isDamOpen = true;
       }
       damStatus = isDamOpen;
     }
 
     // 2. Arrivals
-    // Determine types based on scenario
     let newAgents: Agent[] = [];
-    
     if (config.scenario === ScenarioType.WATERFALL) {
       if (shouldArrive(config.arrivalRateIng)) {
-        newAgents.push({
-          id: nextAgentId++,
-          type: AgentType.STANDARD,
-          entryTick: tick,
-          startExecutionTick: null, endExecutionTick: null,
-          enterResultQueueTick: null, startResultTick: null, endResultTick: null,
-          status: 'QUEUED_EXEC'
-        });
+        newAgents.push(createAgent(nextAgentId++, AgentType.STANDARD, tick));
       }
     } else {
-      // Channels
       if (shouldArrive(config.arrivalRateIng)) {
-        newAgents.push({
-          id: nextAgentId++, type: AgentType.ING, entryTick: tick,
-          startExecutionTick: null, endExecutionTick: null,
-          enterResultQueueTick: null, startResultTick: null, endResultTick: null,
-          status: 'QUEUED_EXEC'
-        });
+        newAgents.push(createAgent(nextAgentId++, AgentType.ING, tick));
       }
       if (shouldArrive(config.arrivalRatePrepa)) {
-        newAgents.push({
-          id: nextAgentId++, type: AgentType.PREPA, entryTick: tick,
-          startExecutionTick: null, endExecutionTick: null,
-          enterResultQueueTick: null, startResultTick: null, endResultTick: null,
-          status: 'QUEUED_EXEC'
-        });
+        newAgents.push(createAgent(nextAgentId++, AgentType.PREPA, tick));
       }
     }
 
-    // 3. Queue 1 Enqueue (Execution)
+    // 3. Queue 1 (Entrée)
     for (const agent of newAgents) {
       if (config.executionQueueCapacity > 0 && q1.length >= config.executionQueueCapacity) {
         agent.status = 'DROPPED_EXEC';
@@ -92,18 +71,15 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
     }
 
     // 4. Assign Execution Servers
-    // Find free servers
     for (let i = 0; i < config.executionServerCount; i++) {
       if (executionServersFreeAt[i] <= tick && q1.length > 0) {
-        // Simple strategy: Look for first available agent allowed to pass
-        // If Dam is closed, ING agents cannot start processing (assuming Dam blocks access to servers)
+        // Logique de priorité : Si barrage fermé, on ne prend PAS les ING
         let agentIndex = -1;
-
         if (config.scenario === ScenarioType.CHANNELS_DAMS && !isDamOpen) {
-          // Find first non-ING agent
-          agentIndex = q1.findIndex(a => a.type !== AgentType.ING);
+          // Chercher le premier non-ING (donc un PREPA)
+          agentIndex = q1.findIndex((a) => a.type !== AgentType.ING);
         } else {
-          // FIFO
+          // FIFO standard
           agentIndex = 0;
         }
 
@@ -112,29 +88,27 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
           agent.startExecutionTick = tick;
           agent.status = 'PROCESSING';
           agent.assignedServerId = i;
-          
-          const duration = agent.type === AgentType.PREPA ? config.serviceDurationPrepa : config.serviceDurationIng;
+
+          const duration =
+            agent.type === AgentType.PREPA
+              ? config.serviceDurationPrepa
+              : config.serviceDurationIng;
           agent.endExecutionTick = tick + duration;
           executionServersFreeAt[i] = tick + duration;
         }
       }
     }
 
-    // 5. Handle Execution Completion -> Move to Q2
-    // We check agents that finished exactly at this tick
-    // Note: In discrete sim, if endExecutionTick == tick, they are done and try to enter Q2
-    const finishedExecAgents = agents.filter(a => a.endExecutionTick === tick && a.status === 'PROCESSING');
-    
+    // 5. Execution Complete -> Queue 2
+    const finishedExecAgents = agents.filter(
+      (a) => a.endExecutionTick === tick && a.status === 'PROCESSING'
+    );
     for (const agent of finishedExecAgents) {
       agent.enterResultQueueTick = tick;
-      
-      // Check Q2 Capacity
       if (config.resultQueueCapacity > 0 && q2.length >= config.resultQueueCapacity) {
         if (config.enableBackup) {
           agent.status = 'BACKUP_SAVED';
-          // Effectively done, but didn't go through result server standard path
-          // We can mark it as completed for stats, but with a special flag
-          agent.endResultTick = tick; // Instant backup
+          agent.endResultTick = tick;
           completedCount++;
         } else {
           agent.status = 'DROPPED_RESULT';
@@ -146,27 +120,27 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       }
     }
 
-    // 6. Assign Result Server (Single server)
+    // 6. Result Server
     if (resultServerFreeAt <= tick && q2.length > 0) {
       const agent = q2.shift()!;
       agent.startResultTick = tick;
       agent.status = 'SENDING';
-      
-      // Result sending is fast, usually 1 tick or configured
-      const duration = config.resultServerSpeed || 1; 
+      const duration = config.resultServerSpeed || 1;
       agent.endResultTick = tick + duration;
       resultServerFreeAt = tick + duration;
     }
 
-    // 7. Complete Result Phase
-    const finishedResultAgents = agents.filter(a => a.endResultTick === tick && a.status === 'SENDING');
+    // 7. Result Complete
+    const finishedResultAgents = agents.filter(
+      (a) => a.endResultTick === tick && a.status === 'SENDING'
+    );
     for (const agent of finishedResultAgents) {
       agent.status = 'COMPLETED';
       completedCount++;
     }
 
-    // 8. Record Stats
-    const activeServers = executionServersFreeAt.filter(t => t > tick).length;
+    // 8. Stats timeline
+    const activeServers = executionServersFreeAt.filter((t) => t > tick).length;
     timeline.push({
       time: tick,
       q1Length: q1.length,
@@ -174,29 +148,49 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       activeServers,
       damOpen: damStatus,
       droppedCount: droppedExecCount + droppedResultCount,
-      completedCount
+      completedCount,
     });
   }
 
-  // Final Statistics Calculation
-  const processedAgents = agents.filter(a => a.status === 'COMPLETED' || a.status === 'BACKUP_SAVED');
-  
-  const totalWaitTime = processedAgents.reduce((acc, a) => {
-    // Wait Q1 + Wait Q2
-    const wait1 = (a.startExecutionTick || 0) - a.entryTick;
-    const wait2 = a.startResultTick ? (a.startResultTick - (a.enterResultQueueTick || 0)) : 0;
-    return acc + wait1 + wait2;
-  }, 0);
+  // --- CALCUL DES STATS FINALES ---
 
-  const totalSystemTime = processedAgents.reduce((acc, a) => {
-    // End - Start
-    const end = a.endResultTick || a.endExecutionTick || config.duration;
-    return acc + (end - a.entryTick);
-  }, 0);
+  const getWait = (a: Agent) =>
+    (a.startExecutionTick || 0) -
+    a.entryTick +
+    (a.startResultTick ? a.startResultTick - (a.enterResultQueueTick || 0) : 0);
+  const getSystem = (a: Agent) =>
+    (a.endResultTick || a.endExecutionTick || config.duration) - a.entryTick;
 
-  // Server Utilization (Average active servers / Total K)
+  // Helper pour calculer les stats d'une sous-population
+  const calcPopStats = (type: AgentType): PopulationStats => {
+    const subAgents = agents.filter((a) => a.type === type);
+    const completed = subAgents.filter(
+      (a) => a.status === 'COMPLETED' || a.status === 'BACKUP_SAVED'
+    );
+    const droppedE = subAgents.filter((a) => a.status === 'DROPPED_EXEC').length;
+    const droppedR = subAgents.filter((a) => a.status === 'DROPPED_RESULT').length;
+    const total = subAgents.length;
+
+    const totalWait = completed.reduce((acc, a) => acc + getWait(a), 0);
+    const totalSys = completed.reduce((acc, a) => acc + getSystem(a), 0);
+
+    return {
+      count: total,
+      completed: completed.length,
+      avgWaitTime: completed.length ? totalWait / completed.length : 0,
+      avgSystemTime: completed.length ? totalSys / completed.length : 0,
+      dropRate: total ? (droppedE + droppedR) / total : 0,
+      dropRateExec: total ? droppedE / total : 0,
+      dropRateResult: total ? droppedR / total : 0,
+    };
+  };
+
+  const globalProcessed = agents.filter(
+    (a) => a.status === 'COMPLETED' || a.status === 'BACKUP_SAVED'
+  );
+  const globalWait = globalProcessed.reduce((acc, a) => acc + getWait(a), 0);
+  const globalSys = globalProcessed.reduce((acc, a) => acc + getSystem(a), 0);
   const totalActiveTicks = timeline.reduce((acc, t) => acc + t.activeServers, 0);
-  const avgServerUtilization = totalActiveTicks / (config.duration * config.executionServerCount);
 
   return {
     agents,
@@ -206,11 +200,30 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       droppedExec: droppedExecCount,
       droppedResult: droppedResultCount,
       completed: completedCount,
-      avgWaitTime: processedAgents.length ? totalWaitTime / processedAgents.length : 0,
-      avgSystemTime: processedAgents.length ? totalSystemTime / processedAgents.length : 0,
-      serverUtilization: avgServerUtilization,
+      avgWaitTime: globalProcessed.length ? globalWait / globalProcessed.length : 0,
+      avgSystemTime: globalProcessed.length ? globalSys / globalProcessed.length : 0,
+      serverUtilization: totalActiveTicks / (config.duration * config.executionServerCount),
       dropRateExec: agents.length ? droppedExecCount / agents.length : 0,
       dropRateResult: agents.length ? droppedResultCount / agents.length : 0,
-    }
+      // SPLIT STATS
+      ing: calcPopStats(
+        config.scenario === ScenarioType.WATERFALL ? AgentType.STANDARD : AgentType.ING
+      ),
+      prepa: calcPopStats(AgentType.PREPA),
+    },
   };
 };
+
+function createAgent(id: number, type: AgentType, tick: number): Agent {
+  return {
+    id,
+    type,
+    entryTick: tick,
+    startExecutionTick: null,
+    endExecutionTick: null,
+    enterResultQueueTick: null,
+    startResultTick: null,
+    endResultTick: null,
+    status: 'QUEUED_EXEC',
+  };
+}

@@ -320,7 +320,7 @@ export const LiveVisualization: React.FC<Props> = ({ results, config }) => {
         {/* LÉGENDE STATIQUE */}
         <div className="absolute bottom-4 right-4 bg-white/90 p-3 rounded-lg border border-slate-200 shadow-sm text-xs text-slate-600 backdrop-blur-sm z-40">
            <div className="flex items-center gap-2 mb-1">
-             <div className="w-3 h-3 bg-blue-600 rounded-full"></div> <span>Étudiant Standard</span>
+             <div className="w-3 h-3 bg-blue-600 rounded-full"></div> <span>Étudiant ING</span>
            </div>
            <div className="flex items-center gap-2 mb-1">
              <div className="w-3 h-3 bg-purple-600 rounded-full"></div> <span>Étudiant PREPA</span>
