@@ -29,7 +29,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
   let isDamOpen = true;
 
   for (let tick = 0; tick < config.duration; tick++) {
-    // 1. Barrage Cycle
+    // Barrage Cycle
     let damStatus = true;
     if (config.scenario === ScenarioType.CHANNELS_DAMS && config.damBlockDuration > 0) {
       const openTime = config.damOpenDuration ?? config.damBlockDuration;
@@ -44,7 +44,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       damStatus = isDamOpen;
     }
 
-    // 2. Arrivals
+    // Arrivals
     let newAgents: Agent[] = [];
     if (config.scenario === ScenarioType.WATERFALL) {
       if (shouldArrive(config.arrivalRateIng)) {
@@ -59,7 +59,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       }
     }
 
-    // 3. Queue 1 (Entrée)
+    // Queue 1 (Entrée)
     for (const agent of newAgents) {
       if (config.executionQueueCapacity > 0 && q1.length >= config.executionQueueCapacity) {
         agent.status = 'DROPPED_EXEC';
@@ -70,7 +70,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       agents.push(agent);
     }
 
-    // 4. Assign Execution Servers
+    // Assign Execution Servers
     for (let i = 0; i < config.executionServerCount; i++) {
       if (executionServersFreeAt[i] <= tick && q1.length > 0) {
         // Logique de priorité : Si barrage fermé, on ne prend PAS les ING
@@ -99,7 +99,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       }
     }
 
-    // 5. Execution Complete -> Queue 2
+    // Execution Complete -> Queue 2
     const finishedExecAgents = agents.filter(
       (a) => a.endExecutionTick === tick && a.status === 'PROCESSING'
     );
@@ -120,7 +120,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       }
     }
 
-    // 6. Result Server
+    // Result Server
     if (resultServerFreeAt <= tick && q2.length > 0) {
       const agent = q2.shift()!;
       agent.startResultTick = tick;
@@ -130,7 +130,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       resultServerFreeAt = tick + duration;
     }
 
-    // 7. Result Complete
+    // Result Complete
     const finishedResultAgents = agents.filter(
       (a) => a.endResultTick === tick && a.status === 'SENDING'
     );
@@ -139,7 +139,7 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
       completedCount++;
     }
 
-    // 8. Stats timeline
+    // Stats timeline
     const activeServers = executionServersFreeAt.filter((t) => t > tick).length;
     timeline.push({
       time: tick,
@@ -199,13 +199,13 @@ export const runSimulation = (config: SimulationConfig): SimulationResult => {
   const N = stayTimes.length;
   var sigma = 0;
   if (N > 1) {
-      // 2. Calculer la moyenne (déjà présente dans ton code)
+      // Calculer la moyenne
       const avg = stayTimes.reduce((a, b) => a + b, 0) / N;
 
-      // 3. Calculer la variance
+      // Calculer la variance
       const variance = stayTimes.reduce((acc, t) => acc + Math.pow(t - avg, 2), 0) / (N - 1);
 
-      // 4. L'écart-type
+      // L'écart-type
       sigma = Math.sqrt(variance);
       
   }

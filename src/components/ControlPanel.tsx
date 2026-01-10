@@ -26,7 +26,7 @@ const LabelWithTooltip: React.FC<{ label: string; help: string; position?: 'top'
 );
 
 export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunning, onSave }) => {
-  
+
   const [iterations, setIterations] = useState(1);
 
   const handleChange = (key: keyof SimulationConfig, value: number | boolean | string) => {
@@ -42,8 +42,8 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
 
       {/* Scenario Selection */}
       <div className="space-y-2">
-        <LabelWithTooltip 
-          label="Scénario" 
+        <LabelWithTooltip
+          label="Scénario"
           help="Le modèle 'Waterfall' est un flux continu simple. Le modèle 'Channels' introduit une régulation (barrage) et plusieurs populations."
           position="bottom"
         />
@@ -66,17 +66,17 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
       {/* Common Parameters */}
       <div className="space-y-4 border-t border-slate-200 pt-4">
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Resources (Moulinette)</h3>
-        
+
         {/* Durée de Simulation */}
         <div>
-          <LabelWithTooltip 
-            label="Durée Simulation (T)" 
+          <LabelWithTooltip
+            label="Durée Simulation (T)"
             help="Nombre total de ticks simulés par run. Plus T est grand, plus les statistiques sont stables."
           />
           <div className="flex items-center gap-2">
-            <input 
-              type="range" min="100" max="10000" step="100" 
-              value={config.duration} 
+            <input
+              type="range" min="100" max="10000" step="100"
+              value={config.duration}
               onChange={(e) => handleChange('duration', parseInt(e.target.value))}
               className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
@@ -86,14 +86,14 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
 
         {/* Nombre de Serveurs d'Exécution */}
         <div>
-          <LabelWithTooltip 
-            label="Serveurs d'exécution (K)" 
+          <LabelWithTooltip
+            label="Serveurs d'exécution (K)"
             help="Nombre de processeurs disponibles pour exécuter les tests."
           />
           <div className="flex items-center gap-2">
-            <input 
-              type="range" min="1" max="20" step="1" 
-              value={config.executionServerCount} 
+            <input
+              type="range" min="1" max="20" step="1"
+              value={config.executionServerCount}
               onChange={(e) => handleChange('executionServerCount', parseInt(e.target.value))}
               className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
@@ -103,16 +103,16 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
 
         {/* Capacité File d'Exécution */}
         <div>
-          <LabelWithTooltip 
-            label="Capacité File Exec (ks)" 
+          <LabelWithTooltip
+            label="Capacité File Exec (ks)"
             help="Taille maximale de la file d'attente principale. Si elle est pleine, les nouvelles soumissions sont rejetées (Erreur 503)."
           >
-             <span className="text-[10px] text-slate-400 italic">(0 = ∞)</span>
+            <span className="text-[10px] text-slate-400 italic">(0 = ∞)</span>
           </LabelWithTooltip>
           <div className="flex items-center gap-2">
-            <input 
-              type="range" min="0" max="100" step="5" 
-              value={config.executionQueueCapacity} 
+            <input
+              type="range" min="0" max="100" step="5"
+              value={config.executionQueueCapacity}
               onChange={(e) => handleChange('executionQueueCapacity', parseInt(e.target.value))}
               className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
@@ -122,16 +122,16 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
 
         {/* Capacité File de Retour */}
         <div>
-          <LabelWithTooltip 
-            label="Capacité File Retour (kf)" 
+          <LabelWithTooltip
+            label="Capacité File Retour (kf)"
             help="Taille maximale de la file de résultats. Si elle est pleine, le résultat calculé est perdu (Page blanche)."
           >
-             <span className="text-[10px] text-slate-400 italic">(0 = ∞)</span>
+            <span className="text-[10px] text-slate-400 italic">(0 = ∞)</span>
           </LabelWithTooltip>
           <div className="flex items-center gap-2">
-            <input 
-              type="range" min="0" max="100" step="5" 
-              value={config.resultQueueCapacity} 
+            <input
+              type="range" min="0" max="100" step="5"
+              value={config.resultQueueCapacity}
               onChange={(e) => handleChange('resultQueueCapacity', parseInt(e.target.value))}
               className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
@@ -141,32 +141,32 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
 
         {/* Vitesse Serveur Résultat */}
         <div>
-          <LabelWithTooltip 
-            label="Vitesse Serveur Résultat (μr)" 
+          <LabelWithTooltip
+            label="Vitesse Serveur Résultat (μr)"
             help="Temps nécessaire pour évacuer un résultat. Augmenter ce temps aide à saturer la File de retour (kf) pour observer des gaspillages de CPU."
           />
           <div className="flex items-center gap-2">
-            <input 
-              type="range" min="1" max="20" step="1" 
-              value={config.resultServerSpeed} 
+            <input
+              type="range" min="1" max="20" step="1"
+              value={config.resultServerSpeed}
               onChange={(e) => handleChange('resultServerSpeed', parseInt(e.target.value))}
               className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-400"
             />
             <span className="text-sm font-mono w-12 text-center bg-white px-1 rounded border border-slate-200 text-slate-700">{config.resultServerSpeed}t</span>
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between">
-           <LabelWithTooltip 
-             label="Backup Activé"
-             help="Active un système de secours qui sauvegarde les résultats si la file de retour est pleine."
-           />
-           <button 
+          <LabelWithTooltip
+            label="Backup Activé"
+            help="Active un système de secours qui sauvegarde les résultats si la file de retour est pleine."
+          />
+          <button
             onClick={() => handleChange('enableBackup', !config.enableBackup)}
             className={`w-10 h-6 rounded-full transition-colors relative ${config.enableBackup ? 'bg-green-500' : 'bg-slate-300'}`}
-           >
-             <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${config.enableBackup ? 'translate-x-4' : 'translate-x-0'}`} />
-           </button>
+          >
+            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${config.enableBackup ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
         </div>
       </div>
 
@@ -175,37 +175,37 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
           {config.scenario === ScenarioType.WATERFALL ? 'Population' : 'Populations'}
         </h3>
-        
+
         <div className="p-3 bg-white rounded border border-slate-200 shadow-sm">
           <div className="text-xs font-bold text-blue-600 mb-2 border-b border-blue-100 pb-1">{config.scenario === ScenarioType.WATERFALL ? 'Étudiants' : 'ING (Fréquent/Rapide)'}</div>
-          
+
           <div className="mb-3">
             <LabelWithTooltip label="Taux d'arrivée (λ)" help="Probabilité qu'un étudiant soumette un travail à chaque tick." />
             <div className="flex items-center gap-2">
-                <input 
-                  type="range" min="0.05" max="0.95" step="0.05" 
-                  value={config.arrivalRateIng} 
-                  onChange={(e) => handleChange('arrivalRateIng', parseFloat(e.target.value))}
-                  className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                />
-                <span className="text-xs font-mono w-12 text-center bg-slate-50 px-1 rounded border border-slate-200 text-slate-600">
-                    {Math.round(config.arrivalRateIng * 100)}%
-                </span>
+              <input
+                type="range" min="0.05" max="0.95" step="0.05"
+                value={config.arrivalRateIng}
+                onChange={(e) => handleChange('arrivalRateIng', parseFloat(e.target.value))}
+                className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs font-mono w-12 text-center bg-slate-50 px-1 rounded border border-slate-200 text-slate-600">
+                {Math.round(config.arrivalRateIng * 100)}%
+              </span>
             </div>
           </div>
 
           <div>
             <LabelWithTooltip label="Durée Service (µ)" help="Temps nécessaire au serveur pour traiter une soumission." />
             <div className="flex items-center gap-2">
-                <input 
-                  type="range" min="5" max="50" step="1" 
-                  value={config.serviceDurationIng} 
-                  onChange={(e) => handleChange('serviceDurationIng', parseInt(e.target.value))}
-                  className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                />
-                <span className="text-xs font-mono w-12 text-center bg-slate-50 px-1 rounded border border-slate-200 text-slate-600">
-                    {config.serviceDurationIng}t
-                </span>
+              <input
+                type="range" min="5" max="50" step="1"
+                value={config.serviceDurationIng}
+                onChange={(e) => handleChange('serviceDurationIng', parseInt(e.target.value))}
+                className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <span className="text-xs font-mono w-12 text-center bg-slate-50 px-1 rounded border border-slate-200 text-slate-600">
+                {config.serviceDurationIng}t
+              </span>
             </div>
           </div>
         </div>
@@ -235,7 +235,7 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
       {config.scenario === ScenarioType.CHANNELS_DAMS && (
         <div className="space-y-4 border-t border-slate-200 pt-4">
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Régulation (Barrage)</h3>
-          
+
           <div>
             <LabelWithTooltip label="Durée Fermeture (tb)" help="Temps de blocage des ING pour laisser passer les PREPA." />
             <div className="flex items-center gap-2">
@@ -259,24 +259,24 @@ export const ControlPanel: React.FC<Props> = ({ config, setConfig, onRun, isRunn
 
       {/* Footer / Run Controls */}
       <div className="mt-auto pt-4 space-y-3">
-         <div className="bg-slate-200/50 p-2 rounded-lg border border-slate-200">
-            <LabelWithTooltip label="Nombre d'itérations" help="Nombre de répétitions pour le benchmark statistique." />
-            <div className="flex items-center gap-2">
-              <input type="number" min="1" max="100" value={iterations} onChange={(e) => setIterations(Math.max(1, parseInt(e.target.value) || 1))} className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" />
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Runs</span>
-            </div>
-         </div>
+        <div className="bg-slate-200/50 p-2 rounded-lg border border-slate-200">
+          <LabelWithTooltip label="Nombre d'itérations" help="Nombre de répétitions pour le benchmark statistique." />
+          <div className="flex items-center gap-2">
+            <input type="number" min="1" max="100" value={iterations} onChange={(e) => setIterations(Math.max(1, parseInt(e.target.value) || 1))} className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" />
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Runs</span>
+          </div>
+        </div>
 
-         <button onClick={() => onRun(iterations)} disabled={isRunning} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-           <Play size={20} fill="currentColor" />
-           {isRunning ? 'Calcul...' : iterations > 1 ? `Lancer ${iterations} simulations` : 'Lancer Simulation'}
-         </button>
+        <button onClick={() => onRun(iterations)} disabled={isRunning} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+          <Play size={20} fill="currentColor" />
+          {isRunning ? 'Calcul...' : iterations > 1 ? `Lancer ${iterations} simulations` : 'Lancer Simulation'}
+        </button>
 
-          {onSave && (
-            <button onClick={onSave} className="w-full mt-2 py-2 text-xs text-slate-500 font-semibold border border-dashed border-slate-300 rounded-lg hover:bg-white hover:text-blue-600 transition-colors">
-              Exporter le Benchmark Excel
-            </button>
-          )}
+        {onSave && (
+          <button onClick={onSave} className="w-full mt-2 py-2 text-xs text-slate-500 font-semibold border border-dashed border-slate-300 rounded-lg hover:bg-white hover:text-blue-600 transition-colors">
+            Exporter le Benchmark Excel
+          </button>
+        )}
       </div>
     </div>
   );

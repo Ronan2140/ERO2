@@ -115,7 +115,7 @@ const App: React.FC = () => {
       const { config: entryConfig, results } = historyEntry;
       if (results.length === 0) return;
 
-      // 1. Création du bloc de paramètres (Clé / Valeur)
+      // Création du bloc de paramètres (Clé / Valeur)
       const configParams = [
         ["PARAMÈTRES DE LA CONFIGURATION", ""],
         ["ID Interne", `Config_${index + 1}`],
@@ -140,12 +140,12 @@ const App: React.FC = () => {
 
       configParams.push(["", ""], ["RÉSULTATS DES SIMULATIONS (BENCHMARK)", ""]);
 
-      // 2. Génération de la feuille Excel
+      // Génération de la feuille Excel
       const ws = XLSX.utils.aoa_to_sheet(configParams);
-      // Ajout des données JSON sous le bloc paramètres (ligne 15 environ)
+      // Ajout des données JSON sous le bloc paramètres
       XLSX.utils.sheet_add_json(ws, results, { origin: configParams.length - 1 });
 
-      // 3. Calcul des métriques pour l'onglet de résumé
+      // Calcul des métriques pour l'onglet de résumé
       const avgSejour = results.reduce((acc, r) => acc + parseFloat(r.Temps_Sejour_Moyen), 0) / results.length;
       const avgRejet = results.reduce((acc, r) => acc + parseFloat(r.Taux_Rejet_Global), 0) / results.length;
 
@@ -160,12 +160,11 @@ const App: React.FC = () => {
         Lambda_ING: entryConfig.arrivalRateIng
       });
 
-      // Nom d'onglet : Config_1_WATER...
+      // Nom d'onglet : C_1_WATERFALL_blabla...
       const sheetName = `C${index + 1}_${entryConfig.scenario.substring(0, 10)}`.replace(/[\\\/\?\*\[\]]/g, "_");
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     });
 
-    // Ajout de l'onglet de synthèse
     const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, wsSummary, "SYNTHESE_GLOBALE");
 

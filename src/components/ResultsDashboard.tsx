@@ -26,12 +26,11 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
   const stats = viewMode === 'GLOBAL' ? results.stats : (viewMode === 'ING' ? results.stats.ing : results.stats.prepa);
 
   // 2. Calcul des taux pour l'affichage (xx.x %)
-  // Note: Dans ton engine, dropRateExec est un ratio (0 à 1), donc on multiplie par 100
   const rateExec = stats.dropRateExec * 100;
   const rateResult = stats.dropRateResult * 100;
   const totalDrop = rateExec + rateResult;
 
-  // Données pour le graphique (timeline toujours globale car physique)
+  // Données pour le graphique
   const chartData = results.timeline.length > 200
     ? results.timeline.filter((_, i) => i % Math.ceil(results.timeline.length / 200) === 0)
     : results.timeline;
@@ -82,9 +81,9 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
           sub2={`Écart-type : ${results.stats.sigma.toFixed(1)} t`}
         />
 
-        {/* KPI 2 : CARTE DE REJET DÉTAILLÉE (Celle que tu veux) */}
+        {/* KPI 2 : CARTE DE REJET DÉTAILLÉE */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          {/* Total en gros */}
+          {/* Total */}
           <div className="flex justify-between items-start mb-2">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Taux de Rejet Total</p>
@@ -133,7 +132,7 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
         ) : (
           <KpiCard
             title="Volume Population"
-            // @ts-ignore (count existe sur PopulationStats)
+            // @ts-ignore
             value={`${stats.count}`}
             icon={viewMode === 'ING' ? <HardHat size={20} /> : <GraduationCap size={20} />}
             sub="Nombre d'agents générés"
@@ -162,7 +161,6 @@ export const ResultsDashboard: React.FC<Props> = ({ results, scenario }) => {
   );
 };
 
-// Composant Simple pour les KPI standards
 const KpiCard = ({ title, value, icon, sub, sub2 }: any) => (
   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between transition-all hover:shadow-md">
     <div className="flex justify-between items-start mb-4">
