@@ -1,3 +1,10 @@
+## Prérequis
+
+*   **Node.js** : Version 18.0.0 ou supérieure (la version LTS v20+ est recommandée).
+*   **npm** : Installé automatiquement avec Node.js.
+
+> **Note** : Ce projet utilise Vite 6, qui ne supporte plus les anciennes versions de Node.js (comme v12 ou v14).
+
 # Moulinette Simulator (ERO2)
 
 Simulation du système de correction "La Moulinette" avec files d'attente et gestion des priorités (ING vs PREPA).
